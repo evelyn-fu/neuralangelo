@@ -90,6 +90,7 @@ def main():
                         block_res=args.block_res, texture_func=texture_func, filter_lcc=args.keep_lcc)
 
     if is_master():
+        # print(mesh)
         print(f"vertices: {len(mesh.vertices)}")
         print(f"faces: {len(mesh.faces)}")
         if args.textured:

@@ -28,6 +28,7 @@ def generate_config(args):
     cfg = Dict()
     cfg._parent_ = "projects/neuralangelo/configs/base.yaml"
     num_images = len(os.listdir(os.path.join(args.data_dir, "images")))
+    # num_images = len(os.listdir(os.path.join(args.data_dir, "rgb")))
     # model cfg
     if args.auto_exposure_wb:
         cfg.data.num_images = num_images
@@ -48,12 +49,15 @@ def generate_config(args):
     elif args.scene_type == "object":
         cfg.model.object.sdf.mlp.inside_out = False
         cfg.model.object.sdf.encoding.coarse2fine.init_active_level = 4
+        # cfg.model.background.enabled = False
+        # cfg.model.render.num_samples.background = 0
     else:
         raise TypeError("Unknown scene type")
     # data config
     cfg.data.type = "projects.neuralangelo.data"
     cfg.data.root = args.data_dir
     img = Image.open(os.path.join(args.data_dir, "images", os.listdir(os.path.join(args.data_dir, "images"))[0]))
+    # img = Image.open(os.path.join(args.data_dir, "rgb", os.listdir(os.path.join(args.data_dir, "rgb"))[0]))
     w, h = img.size
     cfg.data.train.image_size = [h, w]
     short_size = args.val_short_size
@@ -74,7 +78,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_dir", type=str, default=None, help="Path to data")
     parser.add_argument("--auto_exposure_wb", action="store_true",
                         help="Video capture with auto-exposure or white-balance")
-    parser.add_argument("--scene_type", type=str, default="outdoor", choices=["outdoor", "indoor", "object"],
+    parser.add_argument("--scene_type", type=str, default="object", choices=["outdoor", "indoor", "object"],
                         help="Select scene type. Outdoor for building-scale reconstruction; "
                              "indoor for room-scale reconstruction; object for object-centric scene reconstruction.")
     parser.add_argument("--val_short_size", type=int, default=300,

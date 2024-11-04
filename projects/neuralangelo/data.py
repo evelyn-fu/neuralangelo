@@ -43,6 +43,7 @@ class Dataset(base.Dataset):
         # Preload dataset if possible.
         if cfg_data.preload:
             self.images = self.preload_threading(self.get_image, cfg_data.num_workers)
+            self.masks = self.preload_threading(self.get_mask, cfg_data.num_workers)
             self.cameras = self.preload_threading(self.get_camera, cfg_data.num_workers, data_str="cameras")
 
     def __getitem__(self, idx):
@@ -62,12 +63,26 @@ class Dataset(base.Dataset):
         # Get the images.
         image, image_size_raw = self.images[idx] if self.preload else self.get_image(idx)
         image = self.preprocess_image(image)
+        # Get the masks.
+        mask, mask_size_raw = self.masks[idx] if self.preload else self.get_mask(idx)
+        mask = self.preprocess_mask(mask)
         # Get the cameras (intrinsics and pose).
         intr, pose = self.cameras[idx] if self.preload else self.get_camera(idx)
         intr, pose = self.preprocess_camera(intr, pose, image_size_raw)
         # Pre-sample ray indices.
         if self.split == "train":
-            ray_idx = torch.randperm(self.H * self.W)[:self.num_rays]  # [R]
+            # Flatten mask to get indices where mask is 1
+            valid_pixel_indices = torch.nonzero(mask.flatten(1, 2)[0, ...], as_tuple=True)[0]
+            num_valid_pixels = valid_pixel_indices.shape[0]
+
+            # Ensure we have enough valid pixels to sample from
+            if num_valid_pixels >= self.num_rays:
+                # Randomly permute the valid indices and sample the first `self.num_rays`
+                ray_idx = valid_pixel_indices[torch.randperm(num_valid_pixels)[:self.num_rays]]
+            else:
+                # If not enough valid pixels, repeat until we fill `self.num_rays`
+                ray_idx = valid_pixel_indices[torch.randint(0, num_valid_pixels, (self.num_rays,))]
+
             image_sampled = image.flatten(1, 2)[:, ray_idx].t()  # [R,3]
             sample.update(
                 ray_idx=ray_idx,
@@ -78,6 +93,7 @@ class Dataset(base.Dataset):
         else:  # keep image during inference
             sample.update(
                 image=image,
+                mask=mask,
                 intr=intr,
                 pose=pose,
             )
@@ -91,12 +107,36 @@ class Dataset(base.Dataset):
         image_size_raw = image.size
         return image, image_size_raw
 
+    def get_mask(self, idx):
+        # Use mask if it exists
+        if "mask_path" not in self.list[idx]:
+            fpath = self.list[idx]["file_path"]
+            image_fname = f"{self.root}/{fpath}"
+            image = Image.open(image_fname)
+            mask = np.ones(image.size)
+            mask.load()
+            mask_size_raw = mask.size
+            return mask, mask_size_raw
+        else:
+            fpath = self.list[idx]["mask_path"]
+            mask_fname = f"{self.root}/{fpath}"
+            mask = Image.open(mask_fname)
+            mask.load()
+            mask_size_raw = mask.size
+            return mask, mask_size_raw
+
     def preprocess_image(self, image):
         # Resize the image.
         image = image.resize((self.W, self.H))
         image = torchvision_F.to_tensor(image)
         rgb = image[:3]
         return rgb
+
+    def preprocess_mask(self, mask):
+        # Resize the mask.
+        mask = mask.resize((self.W, self.H))
+        mask = torchvision_F.to_tensor(mask)
+        return mask
 
     def get_camera(self, idx):
         # Camera intrinsics.

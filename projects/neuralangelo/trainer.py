@@ -47,9 +47,13 @@ class Trainer(BaseTrainer):
             if "curvature" in self.weights:
                 self.losses["curvature"] = curvature_loss(data["hessians"], outside=data["outside"])
         else:
-            # Compute loss on the entire image.
-            self.losses["render"] = self.criteria["render"](data["rgb_map"], data["image"])
-            self.metrics["psnr"] = -10 * torch_F.mse_loss(data["rgb_map"], data["image"]).log10()
+            # In inference mode, compute loss on the entire image.
+            mask = data["mask"].bool().expand(-1, 3, -1, -1)  # Mask for the entire image if needed
+            rgb_map_masked = data["rgb_map"][mask]
+            image_masked = data["image"][mask]
+
+            self.losses["render"] = self.criteria["render"](rgb_map_masked, image_masked)
+            self.metrics["psnr"] = -10 * torch_F.mse_loss(rgb_map_masked, image_masked).log10()
 
     def get_curvature_weight(self, current_iteration, init_weight):
         if "curvature" in self.weights:
