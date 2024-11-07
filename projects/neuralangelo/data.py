@@ -83,7 +83,7 @@ class Dataset(base.Dataset):
                 # If not enough valid pixels, repeat until we fill `self.num_rays`
                 ray_idx = valid_pixel_indices[torch.randint(0, num_valid_pixels, (self.num_rays,))]
 
-            image_sampled = image.flatten(1, 2)[:, ray_idx].t()  # [R,3]
+            image_sampled = image.flatten(1, 2)[:, ray_idx].t()  # [R,4]
             sample.update(
                 ray_idx=ray_idx,
                 image_sampled=image_sampled,
@@ -129,7 +129,7 @@ class Dataset(base.Dataset):
         # Resize the image.
         image = image.resize((self.W, self.H))
         image = torchvision_F.to_tensor(image)
-        rgb = image[:3]
+        rgb = image[:4] # RGBA
         return rgb
 
     def preprocess_mask(self, mask):

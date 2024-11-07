@@ -174,7 +174,8 @@ class Model(BaseModel):
             opacity = render.composite(1., weights)  # [B,R,1]
             gradient = render.composite(gradients, weights)  # [B,R,3]
         else:
-            opacity = None
+            weights = render.alpha_compositing_weights(alphas)  # [B,R,N,1]
+            opacity = render.composite(1., weights)  # [B,R,1]
             gradient = None
         # Collect output.
         output = dict(

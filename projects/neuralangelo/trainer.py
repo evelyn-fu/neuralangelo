@@ -39,18 +39,32 @@ class Trainer(BaseTrainer):
 
     def _compute_loss(self, data, mode=None):
         if mode == "train":
+            # Blend background for alpha transparency training
+            # Select random color
+            background_color = torch.rand_like(data["rgb"])
+            rgb, opacity = data["image_sampled"][..., :3], data["image_sampled"][..., 3:]
+            gt_image = rgb * opacity + background_color.to(rgb.device) * (1 - opacity)
+            pred_image = data["rgb"] + background_color * (1.0 - data["opacity"])
+
             # Compute loss only on randomly sampled rays.
-            self.losses["render"] = self.criteria["render"](data["rgb"], data["image_sampled"]) * 3  # FIXME:sumRGB?!
-            self.metrics["psnr"] = -10 * torch_F.mse_loss(data["rgb"], data["image_sampled"]).log10()
+            self.losses["render"] = self.criteria["render"](pred_image, gt_image) * 3  # FIXME:sumRGB?!
+            self.metrics["psnr"] = -10 * torch_F.mse_loss(pred_image, gt_image).log10()
             if "eikonal" in self.weights.keys():
                 self.losses["eikonal"] = eikonal_loss(data["gradients"], outside=data["outside"])
             if "curvature" in self.weights:
                 self.losses["curvature"] = curvature_loss(data["hessians"], outside=data["outside"])
         else:
+            # Blend background for alpha transparency training
+            # Select random color
+            background_color = torch.rand_like(data["rgb_map"])
+            rgb, opacity = data["image"][:, :3, :, :], data["image"][:, 3:, :, :]
+            gt_image = rgb * opacity + background_color.to(rgb.device) * (1 - opacity)
+            pred_image = data["rgb_map"] + background_color * (1.0 - data["opacity_map"])
+
             # In inference mode, compute loss on the entire image.
             mask = data["mask"].bool().expand(-1, 3, -1, -1)  # Mask for the entire image if needed
-            rgb_map_masked = data["rgb_map"][mask]
-            image_masked = data["image"][mask]
+            rgb_map_masked = pred_image * mask
+            image_masked = gt_image * mask
 
             self.losses["render"] = self.criteria["render"](rgb_map_masked, image_masked)
             self.metrics["psnr"] = -10 * torch_F.mse_loss(rgb_map_masked, image_masked).log10()
@@ -98,7 +112,19 @@ class Trainer(BaseTrainer):
     def log_wandb_images(self, data, mode=None, max_samples=None):
         images = {"iteration": self.current_iteration, "epoch": self.current_epoch}
         if mode == "val":
-            images_error = (data["rgb_map"] - data["image"]).abs()
+            # Blend background for alpha transparency training
+            # Select random color
+            background_color = torch.rand_like(data["rgb_map"])
+            rgb, opacity = data["image"][:, :3, :, :], data["image"][:, 3:, :, :]
+            gt_image = rgb * opacity + background_color.to(rgb.device) * (1 - opacity)
+            pred_image = data["rgb_map"] + background_color * (1.0 - data["opacity_map"])
+
+            # In inference mode, compute loss on the entire image.
+            mask = data["mask"].bool().expand(-1, 3, -1, -1)  # Mask for the entire image if needed
+            rgb_map_masked = pred_image * mask
+            image_masked = gt_image * mask
+            
+            images_error = (rgb_map_masked - image_masked).abs()
             images.update({
                 f"{mode}/vis/rgb_target": wandb_image(data["image"]),
                 f"{mode}/vis/rgb_render": wandb_image(data["rgb_map"]),
