@@ -44,7 +44,7 @@ class Trainer(BaseTrainer):
             background_color = torch.rand_like(data["rgb"])
             rgb, opacity = data["image_sampled"][..., :3], data["image_sampled"][..., 3:]
             gt_image = rgb * opacity + background_color.to(rgb.device) * (1 - opacity)
-            pred_image = data["rgb"] + background_color * (1.0 - data["opacity"])
+            pred_image = data["rgb"] * data["opacity"] + background_color.to(data["rgb"].device) * (1.0 - data["opacity"])
 
             # Compute loss only on randomly sampled rays.
             self.losses["render"] = self.criteria["render"](pred_image, gt_image) * 3  # FIXME:sumRGB?!
@@ -59,7 +59,7 @@ class Trainer(BaseTrainer):
             background_color = torch.rand_like(data["rgb_map"])
             rgb, opacity = data["image"][:, :3, :, :], data["image"][:, 3:, :, :]
             gt_image = rgb * opacity + background_color.to(rgb.device) * (1 - opacity)
-            pred_image = data["rgb_map"] + background_color * (1.0 - data["opacity_map"])
+            pred_image = data["rgb_map"] * data["opacity_map"] + background_color.to(data["rgb_map"].device) * (1.0 - data["opacity_map"])
 
             # In inference mode, compute loss on the entire image.
             mask = data["mask"].bool().expand(-1, 3, -1, -1)  # Mask for the entire image if needed

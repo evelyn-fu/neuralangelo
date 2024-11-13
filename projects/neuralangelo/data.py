@@ -113,8 +113,7 @@ class Dataset(base.Dataset):
             fpath = self.list[idx]["file_path"]
             image_fname = f"{self.root}/{fpath}"
             image = Image.open(image_fname)
-            mask = np.ones(image.size)
-            mask.load()
+            mask = Image.fromarray(np.zeros(image.size))
             mask_size_raw = mask.size
             return mask, mask_size_raw
         else:
@@ -136,6 +135,7 @@ class Dataset(base.Dataset):
         # Resize the mask.
         mask = mask.resize((self.W, self.H))
         mask = torchvision_F.to_tensor(mask)
+        mask = 1 - mask # invert gripper masks
         return mask
 
     def get_camera(self, idx):
