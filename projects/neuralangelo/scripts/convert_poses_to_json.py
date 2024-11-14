@@ -119,9 +119,9 @@ def export_to_json(K, w, h, transforms, bounding_box, center, radius, file_path)
     for transform_name in sorted(transforms.keys()):
         w2c = transforms[transform_name]
         c2w = np.linalg.inv(w2c)
-        c2w = transform_pose_opengl_to_opencv(c2w)  # convert to GL convention used in iNGP
+        c2w = _cv_to_gl(c2w)  # convert to GL convention used in iNGP
 
-        frame = {"file_path": "rgb/" + transform_name.split(".")[0] + ".png", "mask_path": "masks/" + transform_name.split(".")[0] + ".png", "transform_matrix": c2w.tolist()}
+        frame = {"file_path": "rgb/" + transform_name.split(".")[0] + ".png", "mask_path": "gripper_masks/" + transform_name.split(".")[0] + ".png", "transform_matrix": c2w.tolist()}
         out["frames"].append(frame)
 
     with open(file_path, "w") as outputfile:

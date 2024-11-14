@@ -67,8 +67,11 @@ def bound_by_pose(images):
 
     radius = 0.0
     for f in poses:
-        radius += np.linalg.norm(f[0:3, 3])
+        radius += np.linalg.norm(f[0:3, 3] - center)
     radius /= len(poses)
+    print("center", center)
+    print("radius", radius)
+    # radius *= 2
     bounding_box = [
         [center[0] - radius, center[0] + radius],
         [center[1] - radius, center[1] + radius],
@@ -178,7 +181,7 @@ def export_to_json(cameras, images, bounding_box, center, radius, file_path):
         c2w = np.linalg.inv(w2c)
         c2w = _cv_to_gl(c2w)  # convert to GL convention used in iNGP
 
-        frame = {"file_path": "images/" + img.name, "transform_matrix": c2w.tolist()}
+        frame = {"file_path": "images/" + img.name, "mask_path": "gripper_masks/" + img.name, "transform_matrix": c2w.tolist()}
         out["frames"].append(frame)
 
     with open(file_path, "w") as outputfile:
@@ -188,7 +191,7 @@ def export_to_json(cameras, images, bounding_box, center, radius, file_path):
 
 
 def data_to_json(args):
-    cameras, images, points3D = read_model(os.path.join(args.data_dir, "sparse"), ext=".bin")
+    cameras, images, points3D = read_model(os.path.join(args.data_dir, "sparse/0_bin"), ext=".bin")
 
     # define bounding regions based on scene type
     if args.scene_type == "outdoor":

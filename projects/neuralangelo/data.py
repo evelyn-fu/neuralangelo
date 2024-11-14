@@ -135,7 +135,7 @@ class Dataset(base.Dataset):
         # Resize the mask.
         mask = mask.resize((self.W, self.H))
         mask = torchvision_F.to_tensor(mask)
-        mask = 1 - mask # invert gripper masks
+        # mask = 1 - mask # invert gripper masks
         return mask
 
     def get_camera(self, idx):
