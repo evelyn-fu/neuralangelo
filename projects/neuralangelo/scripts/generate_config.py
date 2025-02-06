@@ -24,7 +24,7 @@ sys.path.append(dir_path.__str__())
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
-def generate_config(args):
+def generate_config(args) -> str:
     cfg = Dict()
     cfg._parent_ = "projects/neuralangelo/configs/base.yaml"
     num_images = len(os.listdir(os.path.join(args.data_dir, "images")))
@@ -69,7 +69,7 @@ def generate_config(args):
     with open(cfg_fname, "w") as file:
         yaml.safe_dump(cfg.to_dict(), file, default_flow_style=False, indent=4)
     print("Config generated to file:", cfg_fname)
-    return
+    return cfg_fname
 
 
 if __name__ == "__main__":
