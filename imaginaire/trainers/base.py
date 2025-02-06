@@ -265,8 +265,8 @@ class BaseTrainer(object):
                        settings=wandb.Settings(start_method="fork"),
                        mode=mode)
             wandb.config.update({'dataset': cfg.data.name})
-            if self.model_module is not None:
-                wandb.watch(self.model_module)
+            # if self.model_module is not None:
+            #     wandb.watch(self.model_module)
 
     def start_of_epoch(self, current_epoch):
         r"""Things to do before an epoch.
